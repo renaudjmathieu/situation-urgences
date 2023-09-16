@@ -1,0 +1,13 @@
+{
+  "version": "2.0",
+  "logging": {
+    "logLevel": {
+      "default": "Error"
+    }
+  },
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[3.*, 4.0.0)"
+  },
+  "functionTimeout": "00:02:00"
+}
