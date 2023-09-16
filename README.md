@@ -138,7 +138,7 @@ This project uses the following:
 3. Install Python packages
 
     ```
-    pip -r requirements-dev.txt
+    pip install -r requirements-dev.txt
     ```
 
 ### Quickstart
