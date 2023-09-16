@@ -15,9 +15,7 @@ echo $randomIdentifier
 
 ## Variables you need to set
 region="canadaeast" # region where resources will be created
-alias="reno" # alias of the user such as jsmith
-domain="renaudjmathieu.com" # domain of the user such as microsoft.com
-user=$alias$domain
+alias="reno" # alias
 subscriptionid="e595ef5e-205f-4ce4-9e15-07567fe5541f" # subscription id of the user
 
 # Create a resource group.
@@ -31,9 +29,9 @@ bingsearchname="bingsearch$randomIdentifier"
 bingsearchurl="https://api.bing.microsoft.com/v7.0/"
 echo "Creating Bing Search v7 account $bingsearchname in $region"
 az search service create \
-    --resource-group $resourcegroupname 
-    --name $bingsearchname 
-    --sku free 
+    --resource-group $resourcegroupname \
+    --name $bingsearchname \
+    --sku free \
     --location $region
 
 # Get Bing Search v7 key
@@ -47,14 +45,6 @@ az keyvault create  \
     --location $region \
     --name $keyvaultname \
     --resource-group $resourcegroupname
-
-# Assign the 'Key Vault Secrets User' role to your user
-echo "Assigning Key Vault Secrets User role to $user"
-
-az role assignment create \
-    --role "Key Vault Secrets User" \
-    --assignee $user \
-    --scope "/subscriptions/$subscriptionid/resourceGroups/$resourcegroupname/providers/Microsoft.KeyVault/vaults/$keyvaultname"
 
 # Add secret to Key Vault
 bingsearchkeysecretname=bing-search-resource-key1
@@ -73,16 +63,8 @@ az storage account create \
     --name $storageaccountname \
     --resource-group $resourcegroupname \
     --allow-blob-public-access false \
-    --location $region \ 
+    --location $region \
     --sku "Standard_LRS"
-
-# Assign the 'Storage Blob Data Contributor' role to your user
-echo "Assigning Storage Blob Data Contributor role to $user on storage account $storageaccountname"
-
-az role assignment create \
-    --role "Storage Blob Data Contributor" \
-    --assignee $user \
-    --scope "/subscriptions/$subscriptionid/resourceGroups/$resourcegroupname/providers/Microsoft.Storage/storageAccounts/$storageaccountname"
 
 # Get connection string for storage account
 echo "Get connection string for storage account"
@@ -119,16 +101,8 @@ az storage account create \
     --resource-group $resourcegroupname \
     --kind StorageV2 \
     --hns \
-    --allow-blob-public-access false
+    --allow-blob-public-access false \
     --location $region
-
-# Assign the 'Storage Blob Data Contributor' role to your user
-echo "Assigning Storage Blob Data Contributor role to $user on data lake account $datalakeaccountname"
-
-az role assignment create \
-    --role "Storage Blob Data Contributor" \
-    --assignee $user \
-    --scope "/subscriptions/$subscriptionid/resourceGroups/$resourcegroupname/providers/providers/Microsoft.Storage/storageAccounts/$datalakeaccountname"
 
 # Create a file system (container) in Data Lake
 filesystem="msdocs-python-cloud-etl-processed"
@@ -143,7 +117,7 @@ directory="news"
 echo "Create a directory $directory in Data Lake file system $filesystem on account $datalakeaccountname"
 
 az storage fs directory create \
-    --account-name $datalakeaccountname 
+    --account-name $datalakeaccountname \
     --name $directory \
     --file-system $filesystem 
 
@@ -162,23 +136,14 @@ echo "Create Azure Function app $functionappname"
 
 az functionapp create \
     --resource-group $resourcegroupname \
-    --storage-account $functionstorageaccountname
-    --name $functionappname \ 
-    --consumption-plan-location $region \ 
+    --storage-account $functionstorageaccountname \
+    --name $functionappname \
+    --consumption-plan-location $region \
     --runtime python \
     --runtime-version 3.9 \
     --functions-version 4 \
     --os-type linux \
-    --assign-identity [system] \
-
-# Add system assigned managed identity to Azure Function
-echo "Add system assigned managed identity to Azure Function"
-
-identityprincipal=$(az functionapp identity assign \
-    --resource-group $resourcegroupname \
-    --name fn$randomIdentifier \
-    --identities [system] \
-    --query "identity.principalId" -o tsv) 
+    --assign-identity [system]
 
 # Create new host key
 hostkeyname=hostkey$randomIdentifier
@@ -187,7 +152,7 @@ echo "Create new host key $hostkeyname"
 hostkeyvalue=$(az functionapp keys set \
     --resource-group $resourcegroupname \
     --name $functionappname \
-    --key-type functionKeys 
+    --key-type functionKeys \
     --key-name $hostkeyname)
 
 # Add environment variables to Azure Function
@@ -198,31 +163,41 @@ az functionapp config appsettings set \
     --name $functionappname \
     --settings "BLOB_STORAGE_RESOURCE_NAME=$storageaccountname BLOB_STORAGE_CONTAINER_NAME=$containername KEY_VAULT_RESOURCE_NAME=$keyvaultname KEY_VAULT_SECRET_NAME=$bingsearchkeysecretname DATALAKE_GEN_2_RESOURCE_NAME=$datalakeaccountname DATALAKE_GEN_2_CONTAINER_NAME=$filesystem DATALAKE_GEN_2_DIRECTORY_NAME=$directory BING_SEARCH_URL=$bingsearchurl"
 
+# Add system assigned managed identity to Azure Function
+echo "Add system assigned managed identity to Azure Function"
+
+az functionapp identity assign \
+    --resource-group $resourcegroupname \
+    --name $functionappname
+
+identityprincipal=$(az resource list \
+    --name $functionappname \
+    --query [*].identity.principalId \
+    --output tsv)
+
 # Add Fn identity to Key Vault
-keyvaultsecretrole="Key Vault Secrets User"
-echo "Assigning Key Vault Secrets User role to system assigned identity $identitypricipal on Key Vault $keyvaultname"
+echo "Assigning Key Vault Secrets User role to system assigned identity $identityprincipal on Key Vault $keyvaultname"
 az role assignment create \
-    --role $keyvaultsecretrole \
+    --role 'Key Vault Secrets User' \
     --assignee $identityprincipal \
     --scope "/subscriptions/$subscriptionid/resourceGroups/$resourcegroupname/providers/Microsoft.KeyVault/vaults/$keyvaultname"
 
 # Add Fn identity to Storage
-storageblobdatacontributor="Storage Blob Data Contributor"
 echo "Assigning Storage Blob Data Contributor role to system assigned identity $identityprincipal on storage account $storageaccountname"
 
 az role assignment create \
-    --role storageblobdatacontributor \
+    --role 'Storage Blob Data Contributor' \
     --assignee $identityprincipal \
     --scope "/subscriptions/$subscriptionid/resourceGroups/$resourcegroupname/providers/Microsoft.Storage/storageAccounts/$storageaccountname"
 
 # Add Fn identity to Data Lake
-datalakedatacontributor="Storage Blob Data Contributor"
 echo "Assigning Storage Blob Data Contributor role to system assigned identity $identityprincipal on data lake account $datalakeaccountname"
 
 az role assignment create \
-    --role $datalakedatacontributor \
+    --role 'Storage Blob Data Contributor' \
     --assignee $identityprincipal \
     --scope "/subscriptions/$subscriptionid/resourceGroups/$resourcegroupname/providers/Microsoft.Storage/storageAccounts/$datalakeaccountname"
+
 
 # Final output
 echo "Resource group: $resourcegroupname"
