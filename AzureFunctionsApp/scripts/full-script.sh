@@ -161,7 +161,7 @@ echo "Add environment variables to Azure Function"
 az functionapp config appsettings set \
     --resource-group $resourcegroupname \
     --name $functionappname \
-    --settings "BLOB_STORAGE_RESOURCE_NAME=$storageaccountname BLOB_STORAGE_CONTAINER_NAME=$containername KEY_VAULT_RESOURCE_NAME=$keyvaultname KEY_VAULT_SECRET_NAME=$bingsearchkeysecretname DATALAKE_GEN_2_RESOURCE_NAME=$datalakeaccountname DATALAKE_GEN_2_CONTAINER_NAME=$filesystem DATALAKE_GEN_2_DIRECTORY_NAME=$directory BING_SEARCH_URL=$bingsearchurl"
+    --settings "BLOB_STORAGE_RESOURCE_NAME=$storageaccountname" "BLOB_STORAGE_CONTAINER_NAME=$containername" "KEY_VAULT_RESOURCE_NAME=$keyvaultname" "KEY_VAULT_SECRET_NAME=$bingsearchkeysecretname" "DATALAKE_GEN_2_RESOURCE_NAME=$datalakeaccountname" "DATALAKE_GEN_2_CONTAINER_NAME=$filesystem" "DATALAKE_GEN_2_DIRECTORY_NAME=$directory" "BING_SEARCH_URL=$bingsearchurl"
 
 # Add system assigned managed identity to Azure Function
 echo "Add system assigned managed identity to Azure Function"
