@@ -14,11 +14,11 @@ let "randomIdentifier=$RANDOM*$RANDOM"
 echo $randomIdentifier
 
 ## Variables you need to set
-region="westus" # region where resources will be created
-alias="" # alias of the user such as jsmith
-domain="microsoft.com" # domain of the user such as microsoft.com
+region="canadaeast" # region where resources will be created
+alias="reno" # alias of the user such as jsmith
+domain="renaudjmathieu.com" # domain of the user such as microsoft.com
 user=$alias$domain
-subscriptionid="" # subscription id of the user
+subscriptionid="e595ef5e-205f-4ce4-9e15-07567fe5541f" # subscription id of the user
 
 # Create a resource group.
 resourcegroupname="py-etl-$randomIdentifier-$alias"
