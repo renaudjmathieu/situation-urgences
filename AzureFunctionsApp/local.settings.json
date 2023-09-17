@@ -5,13 +5,13 @@
     "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     
-    "BLOB_STORAGE_RESOURCE_NAME": "",
+    "BLOB_STORAGE_RESOURCE_NAME": "blobstore588600901",
     "BLOB_STORAGE_CONTAINER_NAME": "msdocs-python-cloud-etl-news-source",
 
-    "KEY_VAULT_RESOURCE_NAME": "",
+    "KEY_VAULT_RESOURCE_NAME": "kv588600901",
     "KEY_VAULT_SECRET_NAME": "bing-search-resource-key1",
 
-    "DATALAKE_GEN_2_RESOURCE_NAME": "",
+    "DATALAKE_GEN_2_RESOURCE_NAME": "datalake588600901",
     "DATALAKE_GEN_2_CONTAINER_NAME": "msdocs-python-cloud-etl-processed",
     "DATALAKE_GEN_2_DIRECTORY_NAME": "news-data",
 
