@@ -1,11 +1,16 @@
-# DO NOT include azure-functions-worker in this file
-# The Python Worker is managed by Azure Functions platform
+# Do not include azure-functions-worker in this file
+# The Python Worker is managed by the Azure Functions platform
 # Manually managing azure-functions-worker may cause unexpected issues
-azure.identity
-azure.functions
+
+azure-storage-file-datalake
+azure-identity
+azure-storage-blob
+azure-keyvault-secrets
+azure-core
+azure-functions
+azure-mgmt-storage
+pandas
+pyarrow
+fastparquet
 microsoft-bing-newssearch
-azure.core
-azure.storage.blob
-azure.storage.file.datalake
-azure.keyvault.secrets
-beautifulsoup4
+bs4

@@ -14,195 +14,172 @@ let "randomIdentifier=$RANDOM*$RANDOM"
 echo $randomIdentifier
 
 ## Variables you need to set
-region="canadaeast" # region where resources will be created
+service_location='canadaeast' # region where resources will be created
 alias="reno" # alias
-subscriptionid="e595ef5e-205f-4ce4-9e15-07567fe5541f" # subscription id of the user
 
-# Create a resource group.
-resourcegroupname="py-etl-$randomIdentifier-$alias"
-echo "Creating resource group $resourcegroupname in $region"
+resource_group_name="py-etl-$randomIdentifier-$alias"
 
-az group create --name $resourcegroupname --location $region --tags "alias"=$alias
+storage_acct_name=blobstore$randomIdentifier
+abs_container_name_ingest='ingest'
+abs_container_name_archive='archive'
 
-# Create Bing Search v7 account
-bingsearchname="bingsearch$randomIdentifier"
-bingsearchurl="https://api.bing.microsoft.com/v7.0/"
-echo "Creating Bing Search v7 account $bingsearchname in $region"
-az search service create \
-    --resource-group $resourcegroupname \
-    --name $bingsearchname \
-    --sku free \
-    --location $region
+adls_acct_name=datalake$randomIdentifier
+fsys_name='filesystem'
+dir_name='data'
 
-# Get Bing Search v7 key
-bingsearchkey=$(az search admin-key show --resource-group $resourcegroupname --service-name $bingsearchname --query "primaryKey" -o tsv)
+key_vault_name=kv$randomIdentifier
+abs_secret_name='abs-access-key1'
+adls_secret_name='adls-access-key1'
 
-# Provision new Azure Key Vault in our resource group
-keyvaultname=kv$randomIdentifier
-echo "Creating key vault $keyvaultname in $region"
+funcapp_name=fn$randomIdentifier
 
-az keyvault create  \
-    --location $region \
-    --name $keyvaultname \
-    --resource-group $resourcegroupname
+# ############################################################################################
+# Create an Azure Resource Group to organize the Azure services used in this series logically.
+# ############################################################################################
+az group create \
+    --location $service_location \
+    --name $resource_group_name
 
-# Add secret to Key Vault
-bingsearchkeysecretname=bing-search-resource-key1
-echo "Adding secret to key vault $keyvaultname with secret named $bingsearchkeysecretname"
-
-az keyvault secret set \
-    --vault-name $keyvaultname \
-    --name $bingsearchkeysecretname \
-    --value $bingsearchkey
-
-# Create azure storage account
-storageaccountname=blobstore$randomIdentifier
-echo "Creating storage account $storageaccountname in $region"
-
+# ##########################################################################################
+# Create a general-purpose storage account in your resource group and assign it an identity.
+# ##########################################################################################
 az storage account create \
-    --name $storageaccountname \
-    --resource-group $resourcegroupname \
-    --allow-blob-public-access false \
-    --location $region \
-    --sku "Standard_LRS"
+    --name $storage_acct_name \
+    --resource-group $resource_group_name \
+    --location $service_location \
+    --sku Standard_LRS \
+    --assign-identity
 
-# Get connection string for storage account
-echo "Get connection string for storage account"
-
-# Capture connection string in variable
-connectionstring=$(az storage account show-connection-string \
-    --resource-group $resourcegroupname \
-    --name $storageaccountname \
-    --query "connectionString")
-
-# Create container for Azure Blob Storage
-containername="msdocs-python-cloud-etl-news-source"
-echo "Create container for Azure Blob Storage"
+# Create a storage container in a storage account.
+az storage container create \
+    --name $abs_container_name_ingest \
+    --account-name $storage_acct_name \
+    --auth-mode login
 
 az storage container create \
-    --account-name $storageaccountname \
-    --name $containername 
+    --name $abs_container_name_archive \
+    --account-name $storage_acct_name \
+    --auth-mode login
 
-# Enable last access tracking on the container
-echo "Enable last access tracking on $storageaccountname"
+storage_acct_id=$(az storage account show \
+                    --name $storage_acct_name  \
+                    --resource-group $resource_group_name \
+                    --query 'id' \
+                    --output tsv)
 
-az storage account blob-service-properties update \
-    --resource-group $resourcegroupname \
-    --account-name $storageaccountname \
-    --enable-last-access-tracking true
+# Capture storage account access key1
+storage_acct_key1=$(az storage account keys list \
+                        --resource-group $resource_group_name \
+                        --account-name $storage_acct_name \
+                        --query [0].value \
+                        --output tsv)
 
-
-# Create Data Lake Storage Gen2 account
-datalakeaccountname=datalake$randomIdentifier
-echo "Create Data Lake Storage Gen2 account"
-
+# ###########################
+# Create a ADLS Gen2 account.
+# ###########################
 az storage account create \
-    --name $datalakeaccountname \
-    --resource-group $resourcegroupname \
+    --name $adls_acct_name \
+    --resource-group $resource_group_name \
     --kind StorageV2 \
     --hns \
-    --allow-blob-public-access false \
-    --location $region
+    --location $service_location \
+    --assign-identity
 
-# Create a file system (container) in Data Lake
-filesystem="msdocs-python-cloud-etl-processed"
-echo "Create a file system in Data Lake"
-
+# Create a file system in ADLS Gen2
 az storage fs create \
-    --name $filesystem \
-    --account-name $datalakeaccountname
+    --name $fsys_name \
+    --account-name $adls_acct_name \
+    --auth-mode login
 
-# Create a directory in Data Lake file system
-directory="news"
-echo "Create a directory $directory in Data Lake file system $filesystem on account $datalakeaccountname"
-
+# Create a directory in ADLS Gen2 file system
 az storage fs directory create \
-    --account-name $datalakeaccountname \
-    --name $directory \
-    --file-system $filesystem 
+    --name $dir_name \
+    --file-system $fsys_name \
+    --account-name $adls_acct_name \
+    --auth-mode login
 
-# Create storage account used by Functions app
-functionstorageaccountname=storfn$randomIdentifier
-echo "Create storage account used by Functions app $functionstorageaccountname"
+adls_acct_key1=$(az storage account keys list \
+                    --resource-group $resource_group_name \
+                    --account-name $adls_acct_name \
+                    --query [0].value
+                    --output tsv)
 
-az storage account create \
-    --resource-group $resourcegroupname \
-    --name $functionstorageaccountname \
-    --sku Standard_LRS
+# ####################################################
+# Provision new Azure Key Vault in our resource group.
+# ####################################################
+az keyvault create  \
+    --location $service_location \
+    --name $key_vault_name \
+    --resource-group $resource_group_name
 
-# Create Azure Function app
-functionappname=fn$randomIdentifier
-echo "Create Azure Function app $functionappname"
+# Create Secret for Azure Blob Storage Account
+az keyvault secret set \
+    --vault-name $key_vault_name \
+    --name $abs_secret_name \
+    --value $storage_acct_key1
 
+# Create Secret for Azure Data Lake Storage Account
+az keyvault secret set \
+    --vault-name $key_vault_name \
+    --name $adls_secret_name \
+    --value $adls_acct_key1
+
+# #######################################################
+# Create a serverless function app in the resource group.
+# #######################################################
 az functionapp create \
-    --resource-group $resourcegroupname \
-    --storage-account $functionstorageaccountname \
-    --name $functionappname \
-    --consumption-plan-location $region \
+    --name $funcapp_name \
+    --storage-account $storage_acct_name \
+    --consumption-plan-location $service_location \
+    --resource-group $resource_group_name \
+    --os-type Linux \
     --runtime python \
     --runtime-version 3.9 \
-    --functions-version 4 \
-    --os-type linux \
-    --assign-identity [system]
-
-# Create new host key
-hostkeyname=hostkey$randomIdentifier
-echo "Create new host key $hostkeyname"
-
-hostkeyvalue=$(az functionapp keys set \
-    --resource-group $resourcegroupname \
-    --name $functionappname \
-    --key-type functionKeys \
-    --key-name $hostkeyname)
-
-# Add environment variables to Azure Function
-echo "Add environment variables to Azure Function"
+    --functions-version 4
 
 az functionapp config appsettings set \
-    --resource-group $resourcegroupname \
-    --name $functionappname \
-    --settings "BLOB_STORAGE_RESOURCE_NAME=$storageaccountname" "BLOB_STORAGE_CONTAINER_NAME=$containername" "KEY_VAULT_RESOURCE_NAME=$keyvaultname" "KEY_VAULT_SECRET_NAME=$bingsearchkeysecretname" "DATALAKE_GEN_2_RESOURCE_NAME=$datalakeaccountname" "DATALAKE_GEN_2_CONTAINER_NAME=$filesystem" "DATALAKE_GEN_2_DIRECTORY_NAME=$directory" "BING_SEARCH_URL=$bingsearchurl"
+    --resource-group $resource_group_name \
+    --name $funcapp_name \
+    --settings "KEY_VAULT_RESOURCE_NAME=$keyvaultname" "KEY_VAULT_SECRET_NAME_ABS=$abs_secret_name" "KEY_VAULT_SECRET_NAME_ADLS=$adls_secret_name" "ABS_RESOURCE_NAME=$storage_acct_name" "ABS_CONTAINER_NAME_INGEST=$abs_container_name_ingest" "ABS_CONTAINER_NAME_ARCHIVE=$abs_container_name_archive" "ADLS_RESOURCE_NAME=$adls_acct_name" "ADLS_CONTAINER_NAME=$fsys_name" "ADLS_DIRECTORY_NAME=$dir_name" "AzureWebJobsFeatureFlags=EnableWorkerIndexing"
 
-# Add system assigned managed identity to Azure Function
-echo "Add system assigned managed identity to Azure Function"
-
+# Generate managed service identity for function app
 az functionapp identity assign \
-    --resource-group $resourcegroupname \
-    --name $functionappname
+    --resource-group $resource_group_name \
+    --name $funcapp_name
 
-identityprincipal=$(az resource list \
-    --name $functionappname \
-    --query [*].identity.principalId \
-    --output tsv)
+# Capture function app managed identity id
+func_principal_id=$(az resource list \
+            --name $funcapp_name \
+            --query [*].identity.principalId \
+            --output tsv)
 
-# Add Fn identity to Key Vault
-echo "Assigning Key Vault Secrets User role to system assigned identity $identityprincipal on Key Vault $keyvaultname"
+# Capture key vault object/resource id
+kv_scope=$(az resource list \
+                --name $key_vault_name \
+                --query [*].id \
+                --output tsv)
+
+# set permissions policy for function app to key vault - get list and set
+az keyvault set-policy \
+    --name $key_vault_name \
+    --resource-group $resource_group_name \
+    --object-id $func_principal_id \
+    --secret-permission get list set
+
+# Create a 'Key Vault Contributor' role assignment for function app managed identity
 az role assignment create \
-    --role 'Key Vault Secrets User' \
-    --assignee $identityprincipal \
-    --scope "/subscriptions/$subscriptionid/resourceGroups/$resourcegroupname/providers/Microsoft.KeyVault/vaults/$keyvaultname"
+    --assignee $func_principal_id \
+    --role 'Key Vault Contributor' \
+    --scope $kv_scope
 
-# Add Fn identity to Storage
-echo "Assigning Storage Blob Data Contributor role to system assigned identity $identityprincipal on storage account $storageaccountname"
-
+# Assign the 'Storage Blob Data Contributor' role to the function app managed identity
 az role assignment create \
+    --assignee $func_principal_id \
     --role 'Storage Blob Data Contributor' \
-    --assignee $identityprincipal \
-    --scope "/subscriptions/$subscriptionid/resourceGroups/$resourcegroupname/providers/Microsoft.Storage/storageAccounts/$storageaccountname"
+    --resource-group  $resource_group_name
 
-# Add Fn identity to Data Lake
-echo "Assigning Storage Blob Data Contributor role to system assigned identity $identityprincipal on data lake account $datalakeaccountname"
-
+# Assign the 'Storage Queue Data Contributor' role to the function app managed identity
 az role assignment create \
-    --role 'Storage Blob Data Contributor' \
-    --assignee $identityprincipal \
-    --scope "/subscriptions/$subscriptionid/resourceGroups/$resourcegroupname/providers/Microsoft.Storage/storageAccounts/$datalakeaccountname"
-
-
-# Final output
-echo "Resource group: $resourcegroupname"
-echo "Key vault: $keyvaultname with secret $bingsearchkeysecretname"
-echo "Bing Search v7 account: $bingsearchname and key $bingsearchkey and search url $bingsearchurl"
-echo "Storage account: $storageaccountname and container name $containername connection string $connectionstring"
-echo "Data Lake Storage Gen2 account: $datalakeaccountname with file system $filesystem and directory $directory"
-echo "Azure Function app: $functionappname with host key named $hostkeyname and value $hostkeyvalue"
+    --assignee $func_principal_id \
+    --role 'Storage Queue Data Contributor' \
+    --resource-group  $resource_group_name

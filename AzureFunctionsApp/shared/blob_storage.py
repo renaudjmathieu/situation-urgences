@@ -4,7 +4,6 @@ import os
 
 from azure.storage.blob import BlobServiceClient
 
-
 # Upload the data to Azure Blob Storage
 def upload_to_blob(azure_credential, account_name, container_name, blob_name, data):  # as string?
 
