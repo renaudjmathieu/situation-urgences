@@ -125,6 +125,10 @@ This project uses the following:
 
 ### Installation
 
+virtualenv --python="/usr/local/bin/python3.10" .venv
+
+
+
 1. Install Azure Functions core tools for local development
     ```
     npm i -g azure-functions-core-tools@4 --unsafe-perm true
@@ -135,7 +139,22 @@ This project uses the following:
     npm install -g azurite
     ```
 
-3. Install Python packages
+3. Change directory to Azure Functions App folder
+    ```
+    cd AzureFunctionsApp
+    ```
+
+4. Create virtual environment
+    ```
+    virtualenv --python="/usr/local/bin/python3.9" .venv
+    ```
+
+5. Activate virtual environment
+    ```
+    source .venv/bin/activate
+    ```
+
+6. Install Python packages
 
     ```
     pip install -r requirements-dev.txt
@@ -143,13 +162,7 @@ This project uses the following:
 
 ### Quickstart
 
-1. Clone this repository
-
-    ```
-    git clone https://github.com/Azure-Samples/msdocs-python-etl-serverless.git
-    ```
-
-2. Start local storage emulation
+1. Start local storage emulation
 
     ```bash
     azurite -s -l azurite -d azurite\debug.log
