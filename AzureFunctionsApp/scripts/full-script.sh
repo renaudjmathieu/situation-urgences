@@ -15,9 +15,9 @@ echo $randomIdentifier
 
 ## Variables you need to set
 service_location='canadaeast' # region where resources will be created
-alias="reno" # alias
+alias="serverless" # alias
 
-resource_group_name="py-etl-$randomIdentifier-$alias"
+resource_group_name="$alias-$randomIdentifier"
 
 storage_acct_name=blobstore$randomIdentifier
 abs_container_name_ingest='ingest'
@@ -140,7 +140,7 @@ az functionapp create \
 az functionapp config appsettings set \
     --resource-group $resource_group_name \
     --name $funcapp_name \
-    --settings "KEY_VAULT_RESOURCE_NAME=$keyvaultname" "KEY_VAULT_SECRET_NAME_ABS=$abs_secret_name" "KEY_VAULT_SECRET_NAME_ADLS=$adls_secret_name" "ABS_RESOURCE_NAME=$storage_acct_name" "ABS_CONTAINER_NAME_INGEST=$abs_container_name_ingest" "ABS_CONTAINER_NAME_ARCHIVE=$abs_container_name_archive" "ADLS_RESOURCE_NAME=$adls_acct_name" "ADLS_CONTAINER_NAME=$fsys_name" "ADLS_DIRECTORY_NAME=$dir_name" "AzureWebJobsFeatureFlags=EnableWorkerIndexing"
+    --settings "KEY_VAULT_RESOURCE_NAME=$key_vault_name" "KEY_VAULT_SECRET_NAME_ABS=$abs_secret_name" "KEY_VAULT_SECRET_NAME_ADLS=$adls_secret_name" "ABS_RESOURCE_NAME=$storage_acct_name" "ABS_CONTAINER_NAME_INGEST=$abs_container_name_ingest" "ABS_CONTAINER_NAME_ARCHIVE=$abs_container_name_archive" "ADLS_RESOURCE_NAME=$adls_acct_name" "ADLS_CONTAINER_NAME=$fsys_name" "ADLS_DIRECTORY_NAME=$dir_name" "AzureWebJobsFeatureFlags=EnableWorkerIndexing"
 
 # Generate managed service identity for function app
 az functionapp identity assign \
