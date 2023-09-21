@@ -21,16 +21,16 @@ def ingest_from_api(url, filename):
     # request the url
     fileobj = urllib.request.urlopen(url)
     
-    #use chardet to detect the encoding
+    # use chardet to detect the encoding
     result = chardet.detect(fileobj.read())
 
-    #parse the url with the correct encoding
+    # parse the url with the correct encoding
     df = pd.read_json(url, encoding=result['encoding'])
 
-    #get the records from the json
+    # get the records from the json
     records = df['result']['records']
 
-    #upload the records (dataframe) to blob storage
+    # upload the records (dataframe) to blob storage
     blob_url = upload_df_to_blob(
         azure_default_credential,
         blob_account_name,
