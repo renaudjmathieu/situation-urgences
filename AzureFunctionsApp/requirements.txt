@@ -14,3 +14,4 @@ pyarrow
 fastparquet
 microsoft-bing-newssearch
 bs4
+chardet

@@ -5,15 +5,15 @@
     "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
 
-    "KEY_VAULT_RESOURCE_NAME": "",
+    "KEY_VAULT_RESOURCE_NAME": "kv482162758",
     "KEY_VAULT_SECRET_NAME_ABS": "abs-access-key1",
     "KEY_VAULT_SECRET_NAME_ADLS": "adls-access-key1",
 
-    "ABS_RESOURCE_NAME": "",
+    "ABS_RESOURCE_NAME": "blobstore482162758",
     "ABS_CONTAINER_NAME_INGEST": "ingest",
     "ABS_CONTAINER_NAME_ARCHIVE": "archive",
 
-    "ADLS_RESOURCE_NAME": "",
+    "ADLS_RESOURCE_NAME": "datalake482162758",
     "ADLS_CONTAINER_NAME": "filesystem",
     "ADLS_DIRECTORY_NAME": "data",
 

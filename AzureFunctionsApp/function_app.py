@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import datetime
 
 import azure.functions as func
 from azure.keyvault.secrets import SecretClient
@@ -18,11 +19,11 @@ from shared.azure_credential import (
     get_azure_key_credential,
 )
 from shared.bing_search import get_news
-from shared.blob_storage import upload_to_blob
 from shared.hash import get_random_hash
 from shared.key_vault_secret import get_key_vault_secret
 from shared.data_lake import upload_to_data_lake
 from shared.transform import clean_documents
+from shared.ingest import ingest_from_api
 
 app = func.FunctionApp()
 
@@ -117,57 +118,21 @@ def demo_relational_data_cloudetl(req: func.HttpRequest) -> func.HttpResponse:
 
 
 @app.function_name(name="api_search")
-@app.route(route="search")  # HTTP Trigger
-def api_search(req: func.HttpRequest) -> func.HttpResponse:
-    # Get the query parameters
-    search_term = req.params.get("search_term", "Quantum Computing")
-    count = req.params.get("count", 10)
+@app.schedule(schedule="0 15 0-23 * * *", 
+              arg_name="mytimer") 
+def api_search(mytimer: func.TimerRequest) -> None:
+    url_1 = 'https://www.donneesquebec.ca/recherche/api/3/action/datastore_search?resource_id=a9272cc9-8234-40d1-9806-9f6b4c75c20d'  
+    url_2 = 'https://www.donneesquebec.ca/recherche/api/3/action/datastore_search?resource_id=b256f87f-40ec-4c79-bdba-a23e9c50e741'
 
-    # Get environment variables
-    key_vault_resource_name = os.environ["KEY_VAULT_RESOURCE_NAME"]
-    bing_secret_name = os.environ["KEY_VAULT_SECRET_NAME"]
-    bing_news_search_url = os.environ["BING_SEARCH_URL"]
-    blob_account_name = os.environ.get("BLOB_STORAGE_RESOURCE_NAME")
-    blob_container_name = os.environ["BLOB_STORAGE_CONTAINER_NAME"]
+    filename_prefix_1 = 'Releve_horaire_urgences_7jours'
+    filename_prefix_2 = 'Releve_horaire_urgences_7jours_nbpers'
 
-    # Get authentication to Key Vault with environment variables
-    azure_default_credential = get_azure_default_credential()
+    filename_suffix = '_' + datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).replace(microsecond=0, second=0, minute=0).isoformat() + ".csv"
 
-    # Get the secret from Key Vault
-    bing_key = get_key_vault_secret(
-        azure_default_credential, key_vault_resource_name, bing_secret_name
-    )
+    ingest_from_api(url_1, filename_prefix_1 + filename_suffix)
+    ingest_from_api(url_2, filename_prefix_2 + filename_suffix)
 
-    # Get authentication to Bing Search with Key
-    azure_key_credential = get_azure_key_credential(bing_key)
-
-    # Clean up file name
-    random_hash = get_random_hash()
-    filename = f"search_results_{search_term}_{random_hash}.json".replace(" ", "_").replace(
-        "-", "_"
-    )
-
-    # Get the search results
-    news_search_results = get_news(
-        azure_key_credential, bing_news_search_url, search_term, count)
-
-    # Convert the result to JSON and save it to Azure Blob Storage
-    if news_search_results.value:
-        news_item_count = len(news_search_results.value)
-        logging.info("news item count: %d", news_item_count)
-        json_items = json.dumps([news.as_dict()
-                                for news in news_search_results.value])
-
-        blob_url = upload_to_blob(
-            azure_default_credential,
-            blob_account_name,
-            blob_container_name,
-            filename,
-            json_items,
-        )
-        logging.info("news uploaded: %s", blob_url)
-
-    return filename
+    return 'true'
 
 
 @app.function_name(name="api_blob_trigger")
