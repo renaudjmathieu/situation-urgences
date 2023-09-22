@@ -19,16 +19,11 @@ alias="serverless" # alias
 
 resource_group_name="$alias-$randomIdentifier"
 
-storage_acct_name=blobstore$randomIdentifier
-abs_container_name_ingest='ingest'
-abs_container_name_archive='archive'
-
 adls_acct_name=datalake$randomIdentifier
 fsys_name='filesystem'
 dir_name='data'
 
 key_vault_name=kv$randomIdentifier
-abs_secret_name='abs-access-key1'
 adls_secret_name='adls-access-key1'
 
 funcapp_name=fn$randomIdentifier
@@ -39,40 +34,6 @@ funcapp_name=fn$randomIdentifier
 az group create \
     --location $service_location \
     --name $resource_group_name
-
-# ##########################################################################################
-# Create a general-purpose storage account in your resource group and assign it an identity.
-# ##########################################################################################
-az storage account create \
-    --name $storage_acct_name \
-    --resource-group $resource_group_name \
-    --location $service_location \
-    --sku Standard_LRS \
-    --assign-identity
-
-# Create a storage container in a storage account.
-az storage container create \
-    --name $abs_container_name_ingest \
-    --account-name $storage_acct_name \
-    --auth-mode login
-
-az storage container create \
-    --name $abs_container_name_archive \
-    --account-name $storage_acct_name \
-    --auth-mode login
-
-storage_acct_id=$(az storage account show \
-                    --name $storage_acct_name  \
-                    --resource-group $resource_group_name \
-                    --query 'id' \
-                    --output tsv)
-
-# Capture storage account access key1
-storage_acct_key1=$(az storage account keys list \
-                        --resource-group $resource_group_name \
-                        --account-name $storage_acct_name \
-                        --query [0].value \
-                        --output tsv)
 
 # ###########################
 # Create a ADLS Gen2 account.
@@ -125,12 +86,6 @@ az keyvault create  \
     --name $key_vault_name \
     --resource-group $resource_group_name
 
-# Create Secret for Azure Blob Storage Account
-az keyvault secret set \
-    --vault-name $key_vault_name \
-    --name $abs_secret_name \
-    --value $storage_acct_key1
-
 # Create Secret for Azure Data Lake Storage Account
 az keyvault secret set \
     --vault-name $key_vault_name \
@@ -153,7 +108,7 @@ az functionapp create \
 az functionapp config appsettings set \
     --resource-group $resource_group_name \
     --name $funcapp_name \
-    --settings "KEY_VAULT_RESOURCE_NAME=$key_vault_name" "KEY_VAULT_SECRET_NAME_ABS=$abs_secret_name" "KEY_VAULT_SECRET_NAME_ADLS=$adls_secret_name" "ABS_RESOURCE_NAME=$storage_acct_name" "ABS_CONTAINER_NAME_INGEST=$abs_container_name_ingest" "ABS_CONTAINER_NAME_ARCHIVE=$abs_container_name_archive" "ADLS_RESOURCE_NAME=$adls_acct_name" "ADLS_CONTAINER_NAME=$fsys_name" "ADLS_DIRECTORY_NAME_BRONZE=$dir_name_bronze" "ADLS_DIRECTORY_NAME_SILVER=$dir_name_silver" "ADLS_DIRECTORY_NAME_GOLD=$dir_name_gold" "AzureWebJobsFeatureFlags=EnableWorkerIndexing"
+    --settings "KEY_VAULT_RESOURCE_NAME=$key_vault_name" "KEY_VAULT_SECRET_NAME_ADLS=$adls_secret_name" "ADLS_RESOURCE_NAME=$adls_acct_name" "ADLS_CONTAINER_NAME=$fsys_name" "ADLS_DIRECTORY_NAME_BRONZE=$dir_name_bronze" "ADLS_DIRECTORY_NAME_SILVER=$dir_name_silver" "ADLS_DIRECTORY_NAME_GOLD=$dir_name_gold" "AzureWebJobsFeatureFlags=EnableWorkerIndexing"
 
 # Generate managed service identity for function app
 az functionapp identity assign \
