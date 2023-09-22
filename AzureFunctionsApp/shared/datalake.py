@@ -71,7 +71,7 @@ def upload_df_to_datalake(
     directory_client = directory_client.create_sub_directory(f"month={month}")
     directory_client = directory_client.create_sub_directory(f"day={day}")
 
-    file_name = f"{now.replace(microsecond=0, second=0, minute=0).isoformat()}.parquet"
+    file_name = f"{now.strftime('%H:00:00')}.parquet"
 
     # Get the file client
     file_client = directory_client.get_file_client(file_name)
