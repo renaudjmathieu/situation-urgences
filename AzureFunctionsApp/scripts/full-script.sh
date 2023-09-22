@@ -19,9 +19,12 @@ alias="serverless" # alias
 
 resource_group_name="$alias-$randomIdentifier"
 
+abs_acct_name=blobstore$randomIdentifier
 adls_acct_name=datalake$randomIdentifier
 fsys_name='filesystem'
-dir_name='data'
+dir_name_bronze='bronze'
+dir_name_silver='silver'
+dir_name_gold='gold'
 
 key_vault_name=kv$randomIdentifier
 adls_secret_name='adls-access-key1'
@@ -34,6 +37,14 @@ funcapp_name=fn$randomIdentifier
 az group create \
     --location $service_location \
     --name $resource_group_name
+
+# #########################################
+# Create a general-purpose storage account.
+# #########################################
+az storage account create \
+    --name $abs_acct_name \
+    --resource-group $resource_group_name \
+    --sku Standard_LRS
 
 # ###########################
 # Create a ADLS Gen2 account.
@@ -97,7 +108,7 @@ az keyvault secret set \
 # #######################################################
 az functionapp create \
     --name $funcapp_name \
-    --storage-account $storage_acct_name \
+    --storage-account $abs_acct_name \
     --consumption-plan-location $service_location \
     --resource-group $resource_group_name \
     --os-type Linux \
@@ -144,10 +155,10 @@ az role assignment create \
 az role assignment create \
     --assignee $func_principal_id \
     --role 'Storage Blob Data Contributor' \
-    --resource-group  $resource_group_name
+    --resource-group $resource_group_name
 
 # Assign the 'Storage Queue Data Contributor' role to the function app managed identity
 az role assignment create \
     --assignee $func_principal_id \
     --role 'Storage Queue Data Contributor' \
-    --resource-group  $resource_group_name
+    --resource-group $resource_group_name
