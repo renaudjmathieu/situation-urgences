@@ -6,14 +6,16 @@ import chardet
 import pandas as pd
 
 from azure.storage.blob import BlobServiceClient
+from shared.datalake import upload_df_to_datalake
 from shared.azure_credential import get_azure_default_credential
 from shared.blob_storage import upload_df_to_blob
 
 def ingest_from_api(url, filename):
 
     # Get environment variables
-    blob_account_name = os.environ.get("ABS_RESOURCE_NAME")
-    blob_container_name = os.environ["ABS_CONTAINER_NAME_INGEST"]
+    datalake_account_name = os.environ.get("ADLS_RESOURCE_NAME")
+    datalake_container_name = os.environ.get("ADLS_CONTAINER_NAME")
+    datalake_directory_name = os.environ.get("ADLS_DIRECTORY_NAME_BRONZE")
 
     # Get authentication to Key Vault with environment variables
     azure_default_credential = get_azure_default_credential()
@@ -31,10 +33,11 @@ def ingest_from_api(url, filename):
     records = df['result']['records']
 
     # upload the records (dataframe) to blob storage
-    blob_url = upload_df_to_blob(
+    blob_url = upload_df_to_datalake(
         azure_default_credential,
-        blob_account_name,
-        blob_container_name,
+        datalake_account_name,
+        datalake_container_name,
+        datalake_directory_name,
         filename,
         pd.DataFrame(records)
     )

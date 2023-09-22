@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import datetime
 
 import azure.functions as func
 from azure.keyvault.secrets import SecretClient
@@ -21,7 +20,7 @@ from shared.azure_credential import (
 from shared.bing_search import get_news
 from shared.hash import get_random_hash
 from shared.key_vault_secret import get_key_vault_secret
-from shared.data_lake import upload_to_data_lake
+from shared.datalake import upload_to_datalake
 from shared.transform import clean_documents
 from shared.ingest import ingest_from_api
 
@@ -117,20 +116,32 @@ def demo_relational_data_cloudetl(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse("This HTTP triggered function executed successfully.")
 
 
-@app.function_name(name="api_search")
+@app.function_name(name="get_data_timed")
 @app.schedule(schedule="0 15 0-23 * * *", 
               arg_name="mytimer") 
-def api_search(mytimer: func.TimerRequest) -> None:
+def get_data_timed(mytimer: func.TimerRequest) -> None:
     url_1 = 'https://www.donneesquebec.ca/recherche/api/3/action/datastore_search?resource_id=a9272cc9-8234-40d1-9806-9f6b4c75c20d'  
     url_2 = 'https://www.donneesquebec.ca/recherche/api/3/action/datastore_search?resource_id=b256f87f-40ec-4c79-bdba-a23e9c50e741'
 
-    filename_prefix_1 = 'Releve_horaire_urgences_7jours'
-    filename_prefix_2 = 'Releve_horaire_urgences_7jours_nbpers'
+    filename_1 = 'Releve_horaire_urgences_7jours'
+    filename_2 = 'Releve_horaire_urgences_7jours_nbpers'
 
-    filename_suffix = '_' + datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).replace(microsecond=0, second=0, minute=0).isoformat() + ".csv"
+    ingest_from_api(url_1, filename_1)
+    ingest_from_api(url_2, filename_2)
 
-    ingest_from_api(url_1, filename_prefix_1 + filename_suffix)
-    ingest_from_api(url_2, filename_prefix_2 + filename_suffix)
+    return 'true'
+
+@app.function_name(name="get_data_manual")
+@app.route(route="get_data_manual")  # HTTP Trigger
+def get_data_manual(req: func.HttpRequest) -> func.HttpResponse:
+    url_1 = 'https://www.donneesquebec.ca/recherche/api/3/action/datastore_search?resource_id=a9272cc9-8234-40d1-9806-9f6b4c75c20d'  
+    url_2 = 'https://www.donneesquebec.ca/recherche/api/3/action/datastore_search?resource_id=b256f87f-40ec-4c79-bdba-a23e9c50e741'
+
+    filename_1 = 'Releve_horaire_urgences_7jours'
+    filename_2 = 'Releve_horaire_urgences_7jours_nbpers'
+
+    ingest_from_api(url_1, filename_1)
+    ingest_from_api(url_2, filename_2)
 
     return 'true'
 
@@ -153,10 +164,10 @@ def test_function(myblob: func.InputStream):
     try:
 
         # Get environment variables
-        data_lake_account_name = os.environ.get("DATALAKE_GEN_2_RESOURCE_NAME")
-        data_lake_container_name = os.environ.get(
+        datalake_account_name = os.environ.get("DATALAKE_GEN_2_RESOURCE_NAME")
+        datalake_container_name = os.environ.get(
             "DATALAKE_GEN_2_CONTAINER_NAME")
-        data_lake_directory_name = os.environ.get(
+        datalake_directory_name = os.environ.get(
             "DATALAKE_GEN_2_DIRECTORY_NAME")
 
         # Get Data
@@ -174,8 +185,8 @@ def test_function(myblob: func.InputStream):
         azure_default_credential = get_azure_default_credential()
 
         # Upload to Data Lake
-        upload_to_data_lake(azure_default_credential, data_lake_account_name,
-                            data_lake_container_name, data_lake_directory_name, new_file_name, json_str)
+        upload_to_datalake(azure_default_credential, datalake_account_name,
+                            datalake_container_name, datalake_directory_name, new_file_name, json_str)
         logging.info(
             "Successfully uploaded to data lake, old: %s, new: %s", myblob.name, new_file_name
         )

@@ -83,6 +83,7 @@ az storage account create \
     --kind StorageV2 \
     --hns \
     --location $service_location \
+    --sku Standard_LRS \
     --assign-identity
 
 # Create a file system in ADLS Gen2
@@ -93,7 +94,19 @@ az storage fs create \
 
 # Create a directory in ADLS Gen2 file system
 az storage fs directory create \
-    --name $dir_name \
+    --name $dir_name_bronze \
+    --file-system $fsys_name \
+    --account-name $adls_acct_name \
+    --auth-mode login
+
+az storage fs directory create \
+    --name $dir_name_silver \
+    --file-system $fsys_name \
+    --account-name $adls_acct_name \
+    --auth-mode login
+
+az storage fs directory create \
+    --name $dir_name_gold \
     --file-system $fsys_name \
     --account-name $adls_acct_name \
     --auth-mode login
@@ -140,7 +153,7 @@ az functionapp create \
 az functionapp config appsettings set \
     --resource-group $resource_group_name \
     --name $funcapp_name \
-    --settings "KEY_VAULT_RESOURCE_NAME=$key_vault_name" "KEY_VAULT_SECRET_NAME_ABS=$abs_secret_name" "KEY_VAULT_SECRET_NAME_ADLS=$adls_secret_name" "ABS_RESOURCE_NAME=$storage_acct_name" "ABS_CONTAINER_NAME_INGEST=$abs_container_name_ingest" "ABS_CONTAINER_NAME_ARCHIVE=$abs_container_name_archive" "ADLS_RESOURCE_NAME=$adls_acct_name" "ADLS_CONTAINER_NAME=$fsys_name" "ADLS_DIRECTORY_NAME=$dir_name" "AzureWebJobsFeatureFlags=EnableWorkerIndexing"
+    --settings "KEY_VAULT_RESOURCE_NAME=$key_vault_name" "KEY_VAULT_SECRET_NAME_ABS=$abs_secret_name" "KEY_VAULT_SECRET_NAME_ADLS=$adls_secret_name" "ABS_RESOURCE_NAME=$storage_acct_name" "ABS_CONTAINER_NAME_INGEST=$abs_container_name_ingest" "ABS_CONTAINER_NAME_ARCHIVE=$abs_container_name_archive" "ADLS_RESOURCE_NAME=$adls_acct_name" "ADLS_CONTAINER_NAME=$fsys_name" "ADLS_DIRECTORY_NAME_BRONZE=$dir_name_bronze" "ADLS_DIRECTORY_NAME_SILVER=$dir_name_silver" "ADLS_DIRECTORY_NAME_GOLD=$dir_name_gold" "AzureWebJobsFeatureFlags=EnableWorkerIndexing"
 
 # Generate managed service identity for function app
 az functionapp identity assign \
